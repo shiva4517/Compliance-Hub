@@ -1,0 +1,143 @@
+# Deploy Pipeline: ComplianceHub Azure Functions
+# Triggered automatically when azure-functions-build.yml completes successfully.
+trigger: none
+
+resources:
+  pipelines:
+    - pipeline: azure-functions-build
+      source: 'ComplianceHub Azure Functions Build'   # must match the pipeline name in Azure DevOps
+      trigger:
+        branches:
+          include:
+            - master
+
+variables:
+  - template: templates/variables.yml
+
+stages:
+  - stage: Deploy_Dev
+    displayName: Deploy to Dev Slot
+    jobs:
+      - deployment: Deploy
+        displayName: Deploy Functions to dev slot
+        pool:
+          vmImage: ubuntu-latest
+        environment: dev
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - download: azure-functions-build
+                  artifact: azure-functions
+
+                - task: AzureAppServiceSettings@1
+                  displayName: Apply Function App Settings (dev)
+                  inputs:
+                    azureSubscription: $(azureSubscription)
+                    appName: $(functionAppName)
+                    resourceGroupName: $(resourceGroup)
+                    slotName: $(deploySlot)
+                    appSettings: |
+                      [
+                        { "name": "ASPNETCORE_ENVIRONMENT",               "value": "Development",              "slotSetting": true },
+                        { "name": "AzureWebJobsStorage",                  "value": "$(AZURE_STORAGE_CONN_DEV)", "slotSetting": true },
+                        { "name": "ServiceBusConnectionString",           "value": "$(SERVICE_BUS_CONN_DEV)",   "slotSetting": true },
+                        { "name": "ConnectionStrings__DefaultConnection", "value": "$(ComplianceHub_DB_CONNECTION_DEV)",  "slotSetting": true }
+                      ]
+
+                - task: AzureFunctionApp@2
+                  displayName: Deploy to dev slot
+                  inputs:
+                    connectedServiceNameComplianceHub: $(azureSubscription)
+                    appType: functionApp
+                    appName: $(functionAppName)
+                    deployToSlotOrASE: true
+                    resourceGroupName: $(resourceGroup)
+                    slotName: $(deploySlot)
+                    package: '$(Pipeline.Workspace)/azure-functions-build/azure-functions/*.zip'
+                    runtimeStack: DOTNET-ISOLATED|10.0
+
+  # Deploy_QA and Deploy_Prod require manual approval.
+  # Configure approvals in Azure DevOps → Environments → qa / production → Approvals and checks.
+  - stage: Deploy_QA
+    displayName: Deploy to QA Slot
+    dependsOn: Deploy_Dev
+    condition: succeeded()
+    jobs:
+      - deployment: Deploy
+        displayName: Deploy Functions to QA slot
+        pool:
+          vmImage: ubuntu-latest
+        environment: qa
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - download: azure-functions-build
+                  artifact: azure-functions
+
+                - task: AzureAppServiceSettings@1
+                  displayName: Apply Function App Settings (qa)
+                  inputs:
+                    azureSubscription: $(azureSubscription)
+                    appName: $(functionAppName)
+                    resourceGroupName: $(resourceGroup)
+                    slotName: $(qaSlot)
+                    appSettings: |
+                      [
+                        { "name": "ASPNETCORE_ENVIRONMENT",               "value": "Staging",                   "slotSetting": true },
+                        { "name": "AzureWebJobsStorage",                  "value": "$(AZURE_STORAGE_CONN_QA)",  "slotSetting": true },
+                        { "name": "ServiceBusConnectionString",           "value": "$(SERVICE_BUS_CONN_QA)",    "slotSetting": true },
+                        { "name": "ConnectionStrings__DefaultConnection", "value": "$(ComplianceHub_DB_CONNECTION_QA)",   "slotSetting": true }
+                      ]
+
+                - task: AzureFunctionApp@2
+                  displayName: Deploy to QA slot
+                  inputs:
+                    connectedServiceNameComplianceHub: $(azureSubscription)
+                    appType: functionApp
+                    appName: $(functionAppName)
+                    deployToSlotOrASE: true
+                    resourceGroupName: $(resourceGroup)
+                    slotName: $(qaSlot)
+                    package: '$(Pipeline.Workspace)/azure-functions-build/azure-functions/*.zip'
+                    runtimeStack: DOTNET-ISOLATED|10.0
+
+  - stage: Deploy_Prod
+    displayName: Deploy to Production
+    dependsOn: Deploy_QA
+    condition: succeeded()
+    jobs:
+      - deployment: Deploy
+        displayName: Swap QA slot → production
+        pool:
+          vmImage: ubuntu-latest
+        environment: production
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: AzureAppServiceSettings@1
+                  displayName: Apply Function App Settings (prod)
+                  inputs:
+                    azureSubscription: $(azureSubscription)
+                    appName: $(functionAppName)
+                    resourceGroupName: $(resourceGroup)
+                    slotName: $(qaSlot)
+                    appSettings: |
+                      [
+                        { "name": "ASPNETCORE_ENVIRONMENT",               "value": "Production",                 "slotSetting": true },
+                        { "name": "AzureWebJobsStorage",                  "value": "$(AZURE_STORAGE_CONN_PROD)", "slotSetting": true },
+                        { "name": "ServiceBusConnectionString",           "value": "$(SERVICE_BUS_CONN_PROD)",   "slotSetting": true },
+                        { "name": "ConnectionStrings__DefaultConnection", "value": "$(ComplianceHub_DB_CONNECTION_PROD)",  "slotSetting": true }
+                      ]
+
+                - task: AzureAppServiceManage@0
+                  displayName: Swap QA slot → production
+                  inputs:
+                    azureSubscription: $(azureSubscription)
+                    action: Swap Slots
+                    webAppName: $(functionAppName)
+                    resourceGroupName: $(resourceGroup)
+                    sourceSlot: $(qaSlot)
+                    swapWithProduction: true

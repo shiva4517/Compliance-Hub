@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell($root = \"c:\\\\Users\\\\KURUVA SHIVA PRASAD\\\\Desktop\\\\Compliance Hub\\\\Source\\\\server\"; Get-ChildItem -Path $root -Recurse -Directory -Force | Where-Object { $_.Name -eq 'bin' -or $_.Name -eq 'obj' } | ForEach-Object { Remove-Item -Recurse -Force -LiteralPath $_.FullName })",
+      "Bash(dotnet build *)",
+      "Bash(npx tsc *)",
+      "Bash(git check-ignore *)",
+      "Bash(awk -F/ '{print $3}')",
+      "Bash(git fetch *)",
+      "Bash(git log *)",
+      "Bash(git rev-list *)",
+      "Bash(git push *)",
+      "Bash(dotnet ef *)"
+    ]
+  }
+}

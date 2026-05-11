@@ -1,0 +1,21 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "DefaultEndpointsProtocol=https;AccountName=armsc;AccountKey=oLM+eq7L7fiHC8EQzbI4kt/GxVqXlwgVQQv61dBkhkmZzTVzh8M6AUVVRYwysl+rIgQRFlh+Sndb+AStiMBTsQ==;EndpointSuffix=core.windows.net",
+    "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
+    "ConnectionStrings__RegulationsConnection": "Host=armdbserver.postgres.database.azure.com;Port=5432;Database=ARM_PORTAL_REGULATIONS;Username=akeepoadminarm;Password=RegAk753@$$",
+    "ConnectionStrings__DefaultConnection": "Host=armdbserver.postgres.database.azure.com;Port=5432;Database=ARM_PORTAL;Username=akeepoadminarm;Password=RegAk753@$$",
+    "EcfrApi__BaseUrl": "https://www.ecfr.gov",
+    "APPLICATIONINSIGHTS_CONNECTION_STRING": "InstrumentationKey=53aa45cc-b08e-4049-a08b-4a81edaf67fc;IngestionEndpoint=https://eastus2-3.in.applicationinsights.azure.com/;LiveEndpoint=https://eastus2.livediagnostics.monitor.azure.com/;ApplicationId=47514aa6-24f1-446f-a770-5d7441f3af0a",
+    "ServiceBusConnection": "Endpoint=sb://akeepoarm.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=UEqzG+5v9F9mNqknMIqphNziTAxkzQJHR+ASbN9N5rQ=",
+    "ServiceBusQueueName": "arm_email_notification",
+    "Email__SendGridApiKey": "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",
+    "Email__FromAddress": "sateesh.dasari@akeepo.com",
+    "Email__FromName": "Compliance Hub",
+    "Retry__MaxAttempts": "3",
+    "Retry__InitialDelaySeconds": "2",
+    "Outbox__PollingIntervalSeconds": "60",
+    "Outbox__BatchSize": "10",
+    "Outbox__StaleProcessingThresholdMinutes": "5"
+  }
+}

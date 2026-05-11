@@ -1,0 +1,60 @@
+# Build Pipeline: ComplianceHub .NET 10 Web API
+trigger:
+  branches:
+    include:
+      - master
+  paths:
+    include:
+      - Source/server/**
+    exclude:
+      - Source/server/ComplianceHub.Functions/**
+
+variables:
+  - template: templates/variables.yml
+
+jobs:
+  - job: Build
+    displayName: Restore, build & test
+    pool:
+      vmImage: windows-latest
+    steps:
+      - task: UseDotNet@2
+        displayName: Use .NET $(dotnetVersion)
+        inputs:
+          packageType: sdk
+          version: $(dotnetVersion)
+          installationPath: $(Agent.ToolsDirectory)/dotnet
+
+      - task: DotNetCoreCLI@2
+        displayName: Restore NuGet packages
+        inputs:
+          command: restore
+          projects: $(solutionPath)
+
+      - task: DotNetCoreCLI@2
+        displayName: Build solution
+        inputs:
+          command: build
+          projects: $(solutionPath)
+          arguments: '--configuration $(buildConfiguration) --no-restore'
+
+      - task: DotNetCoreCLI@2
+        displayName: Run tests
+        inputs:
+          command: test
+          projects: 'Source/server/**/*.Tests.csproj'
+          arguments: '--configuration $(buildConfiguration) --no-build --collect:"XPlat Code Coverage"'
+
+      - task: DotNetCoreCLI@2
+        displayName: Publish ComplianceHub.API
+        inputs:
+          command: publish
+          publishWebProjects: false
+          projects: $(apiProjectPath)
+          arguments: '--configuration $(buildConfiguration) --no-build --output $(Build.ArtifactStagingDirectory)/api'
+          zipAfterPublish: true
+          modifyOutputPath: false
+
+      - publish: $(Build.ArtifactStagingDirectory)/api
+        artifact: dotnet-api
+        displayName: Publish artifact

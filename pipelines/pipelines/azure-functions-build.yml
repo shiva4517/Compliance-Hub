@@ -1,0 +1,54 @@
+# Build Pipeline: ComplianceHub Azure Functions
+trigger:
+  branches:
+    include:
+      - master
+  paths:
+    include:
+      - Source/server/ComplianceHub.Functions/**
+      - Source/server/ComplianceHub.Application/**
+      - Source/server/ComplianceHub.Domain/**
+      - Source/server/ComplianceHub.Infrastructure/**
+
+variables:
+  - template: templates/variables.yml
+
+jobs:
+  - job: Build
+    displayName: Build & package
+    pool:
+      vmImage: ubuntu-latest
+    steps:
+      - task: UseDotNet@2
+        displayName: Use .NET $(dotnetVersion)
+        inputs:
+          packageType: sdk
+          version: $(dotnetVersion)
+          installationPath: $(Agent.ToolsDirectory)/dotnet
+
+      - task: DotNetCoreCLI@2
+        displayName: Restore NuGet packages
+        inputs:
+          command: restore
+          projects: $(functionsProjectPath)
+
+      - task: DotNetCoreCLI@2
+        displayName: Build ComplianceHub.Functions
+        inputs:
+          command: build
+          projects: $(functionsProjectPath)
+          arguments: '--configuration $(buildConfiguration) --no-restore'
+
+      - task: DotNetCoreCLI@2
+        displayName: Publish ComplianceHub.Functions
+        inputs:
+          command: publish
+          publishWebProjects: false
+          projects: $(functionsProjectPath)
+          arguments: '--configuration $(buildConfiguration) --no-build --output $(Build.ArtifactStagingDirectory)/functions'
+          zipAfterPublish: true
+          modifyOutputPath: false
+
+      - publish: $(Build.ArtifactStagingDirectory)/functions
+        artifact: azure-functions
+        displayName: Publish artifact

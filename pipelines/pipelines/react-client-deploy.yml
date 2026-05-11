@@ -1,0 +1,140 @@
+# Deploy Pipeline: ComplianceHub React Client
+# Triggered automatically when react-client-build.yml completes successfully.
+# Each environment deploys its own artifact built with the matching API URL.
+trigger: none
+
+resources:
+  pipelines:
+    - pipeline: react-client-build
+      source: 'ComplianceHub React Client Build'   # must match the pipeline name in Azure DevOps
+      trigger:
+        branches:
+          include:
+            - master
+
+variables:
+  - template: templates/variables.yml
+
+stages:
+  - stage: Deploy_Dev
+    displayName: Deploy to Dev Slot
+    jobs:
+      - deployment: Deploy
+        displayName: Deploy React app to dev slot
+        pool:
+          vmImage: ubuntu-latest
+        environment: dev
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - download: react-client-build
+                  artifact: react-client-dev
+
+                - task: AzureAppServiceSettings@1
+                  displayName: Apply App Settings (dev)
+                  inputs:
+                    azureSubscription: $(azureSubscription)
+                    appName: $(reactAppServiceName)
+                    resourceGroupName: $(resourceGroup)
+                    slotName: $(deploySlot)
+                    appSettings: |
+                      [
+                        { "name": "WEBSITE_NODE_DEFAULT_VERSION", "value": "~24", "slotSetting": false }
+                      ]
+
+                - task: AzureWebApp@1
+                  displayName: Deploy to dev slot
+                  inputs:
+                    azureSubscription: $(azureSubscription)
+                    appType: webAppLinux
+                    appName: $(reactAppServiceName)
+                    resourceGroupName: $(resourceGroup)
+                    deployToSlotOrASE: true
+                    slotName: $(deploySlot)
+                    package: $(Pipeline.Workspace)/react-client-build/react-client-dev/react-client-dev.zip
+                    runtimeStack: 'NODE|24-lts'
+                    startUpCommand: 'pm2 serve /home/site/wwwroot --no-daemon --spa'
+
+  # Deploy_QA and Deploy_Prod require manual approval.
+  # Configure approvals in Azure DevOps → Environments → qa / production → Approvals and checks.
+  - stage: Deploy_QA
+    displayName: Deploy to QA Slot
+    dependsOn: Deploy_Dev
+    condition: succeeded()
+    jobs:
+      - deployment: Deploy
+        displayName: Deploy React app to QA slot
+        pool:
+          vmImage: ubuntu-latest
+        environment: qa
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - download: react-client-build
+                  artifact: react-client-qa
+
+                - task: AzureAppServiceSettings@1
+                  displayName: Apply App Settings (qa)
+                  inputs:
+                    azureSubscription: $(azureSubscription)
+                    appName: $(reactAppServiceName)
+                    resourceGroupName: $(resourceGroup)
+                    slotName: $(qaSlot)
+                    appSettings: |
+                      [
+                        { "name": "WEBSITE_NODE_DEFAULT_VERSION", "value": "~24", "slotSetting": false }
+                      ]
+
+                - task: AzureWebApp@1
+                  displayName: Deploy to QA slot
+                  inputs:
+                    azureSubscription: $(azureSubscription)
+                    appType: webAppLinux
+                    appName: $(reactAppServiceName)
+                    resourceGroupName: $(resourceGroup)
+                    deployToSlotOrASE: true
+                    slotName: $(qaSlot)
+                    package: $(Pipeline.Workspace)/react-client-build/react-client-qa/react-client-qa.zip
+                    runtimeStack: 'NODE|24-lts'
+                    startUpCommand: 'pm2 serve /home/site/wwwroot --no-daemon --spa'
+
+  - stage: Deploy_Prod
+    displayName: Deploy to Production
+    dependsOn: Deploy_QA
+    condition: succeeded()
+    jobs:
+      - deployment: Deploy
+        displayName: Deploy React app to production
+        pool:
+          vmImage: ubuntu-latest
+        environment: production
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - download: react-client-build
+                  artifact: react-client-prod
+
+                - task: AzureAppServiceSettings@1
+                  displayName: Apply App Settings (prod)
+                  inputs:
+                    azureSubscription: $(azureSubscription)
+                    appName: $(reactAppServiceName)
+                    resourceGroupName: $(resourceGroup)
+                    appSettings: |
+                      [
+                        { "name": "WEBSITE_NODE_DEFAULT_VERSION", "value": "~24", "slotSetting": false }
+                      ]
+
+                - task: AzureWebApp@1
+                  displayName: Deploy to production
+                  inputs:
+                    azureSubscription: $(azureSubscription)
+                    appType: webAppLinux
+                    appName: $(reactAppServiceName)
+                    resourceGroupName: $(resourceGroup)
+                    package: $(Pipeline.Workspace)/react-client-build/react-client-prod/react-client-prod.zip
+                    runtimeStack: 'NODE|24-lts'
+                    startUpCommand: 'pm2 serve /home/site/wwwroot --no-daemon --spa'

@@ -1,0 +1,47 @@
+# Shared variable template — referenced by all ComplianceHub pipelines.
+# Set secret values (marked below) as pipeline secret variables in
+# Azure DevOps: Pipeline → Edit → Variables, with "Keep this value secret" checked.
+variables:
+  # ── Azure DevOps service connection ──────────────────────────────────────────
+  azureSubscription: 'ComplianceHub-Azure-Connection'
+  resourceGroup: 'rg-compliance-hub'
+
+  # ── App Service / Function App names ─────────────────────────────────────────
+  reactAppServiceName: 'app-compliance-hub-ui'
+  apiAppServiceName: 'app-compliance-hub-api'
+  functionAppName: '<your-function-app-name>'
+
+  # ── Slot names ───────────────────────────────────────────────────────────────
+  deploySlot: 'dev'
+  qaSlot: 'qa'
+
+  # ── Runtimes ──────────────────────────────────────────────────────────────────
+  nodeVersion: '24.x'
+  dotnetVersion: '10.x'
+  buildConfiguration: 'Release'
+
+  # ── API base URLs per environment (used by React build) ───────────────────────
+  apiBaseUrlDev:  'https://app-compliance-hub-api-dev-dfdmhvfbaxescccr.canadacentral-01.azurewebsites.net'
+  apiBaseUrlQA:   'https://app-compliance-hub-api-qa-grfxagcrb8h4g2dr.canadacentral-01.azurewebsites.net'
+  apiBaseUrlProd: 'https://app-compliance-hub-api-h7gaetdqf5dcf0b9.canadacentral-01.azurewebsites.net'
+
+  # ── Source paths ──────────────────────────────────────────────────────────────
+  clientDir: 'Source/client'
+  buildOutput: 'Source/client/dist'
+  solutionPath: 'Source/server/ComplianceHub.sln'
+  apiProjectPath: 'Source/server/ComplianceHub.API/ComplianceHub.API.csproj'
+  functionsProjectPath: 'Source/server/ComplianceHub.Functions/ComplianceHub.Functions.csproj'
+
+  # ── Secret variables — define these in Azure DevOps pipeline settings ─────────
+  # ComplianceHub_DB_CONNECTION_DEV           (secret) — ComplianceHub_PORTAL database (dev)
+  # ComplianceHub_DB_CONNECTION_QA            (secret) — ComplianceHub_PORTAL database (qa)
+  # ComplianceHub_DB_CONNECTION_PROD          (secret) — ComplianceHub_PORTAL database (prod)
+  # ComplianceHub_REGULATIONS_DB_CONN_DEV     (secret) — ComplianceHub_PORTAL_REGULATIONS database (dev)
+  # ComplianceHub_REGULATIONS_DB_CONN_QA      (secret) — ComplianceHub_PORTAL_REGULATIONS database (qa)
+  # ComplianceHub_REGULATIONS_DB_CONN_PROD    (secret) — ComplianceHub_PORTAL_REGULATIONS database (prod)
+  # SERVICE_BUS_CONN_DEV       (secret)
+  # SERVICE_BUS_CONN_QA        (secret)
+  # SERVICE_BUS_CONN_PROD      (secret)
+  # AZURE_STORAGE_CONN_DEV     (secret)
+  # AZURE_STORAGE_CONN_QA      (secret)
+  # AZURE_STORAGE_CONN_PROD    (secret)
