@@ -38,7 +38,7 @@ public class ExceptionHandlingMiddleware(RequestDelegate next, ILogger<Exception
             ValidationException ve => new { success = false, message = ve.Message, errors = (object)ve.Errors },
             RecordInactiveException rie => new { success = false, message = rie.Message, existingId = rie.ExistingId, isInactive = true },
             _ => new { success = false, message = exception is not (NotFoundException or UnauthorizedException or ForbiddenException or ConflictException)
-                ? "An unexpected error occurred." : exception.Message }
+                ? "An unexpected error occurred. " + exception.Message  : exception.Message }
         };
 
         await context.Response.WriteAsync(JsonSerializer.Serialize(response, new JsonSerializerOptions
