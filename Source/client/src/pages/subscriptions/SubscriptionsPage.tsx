@@ -7,7 +7,7 @@ import { regulationService } from '../../services/regulationService';
 import { customerService } from '../../services/customerService';
 import type { Subscription, SubscribingLevel } from '../../types';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
-import SubscriptionHierarchyPicker, { buildTreeNodes, getSubscriptionItems } from './SubscriptionHierarchyPicker';
+import SubscriptionHierarchyPicker, { getSubscriptionItemsFromRegistry, type SubscriptionRegistry } from './SubscriptionHierarchyPicker';
 import SubscriptionDetailsModal from './SubscriptionDetailsModal';
 import SubscriptionEditTaskModal from './SubscriptionEditTaskModal';
 
@@ -31,6 +31,7 @@ export default function SubscriptionsPage() {
   const [pickerCustomerId, setPickerCustomerId] = useState(scopedCustomerId ?? '');
   const [pickerEntityId, setPickerEntityId] = useState('');
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
+  const [pickerRegistry, setPickerRegistry] = useState<SubscriptionRegistry>(new Map());
   const [saveResult, setSaveResult] = useState<{ saved: number; duplicates: string[] } | null>(null);
   const [filterCustomerId, setFilterCustomerId] = useState('');
   const [search, setSearch] = useState('');
@@ -76,14 +77,8 @@ export default function SubscriptionsPage() {
     queryFn: () => subscriptionService.getAll(subscriptionParams, 1, 200),
   });
 
-  const { data: pickerHierarchy } = useQuery({
-    queryKey: ['regulation-hierarchy', pickerEntityId],
-    queryFn: () => regulationService.getHierarchy(pickerEntityId),
-    enabled: !isCustomer && !!pickerEntityId,
-  });
-
   const createMutation = useMutation({
-    mutationFn: ({ customerId, items }: { customerId: string; items: ReturnType<typeof getSubscriptionItems> }) =>
+    mutationFn: ({ customerId, items }: { customerId: string; items: ReturnType<typeof getSubscriptionItemsFromRegistry> }) =>
       subscriptionService.createBulk(customerId, items),
     onSuccess: result => {
       qc.invalidateQueries({ queryKey: ['subscriptions'] });
@@ -124,9 +119,8 @@ export default function SubscriptionsPage() {
     : 'Your subscription details.';
 
   const handleSave = () => {
-    if (!pickerCustomerId || !pickerEntityId || !pickerHierarchy || selectedKeys.size === 0) return;
-    const treeNodes = buildTreeNodes(pickerHierarchy);
-    const items = getSubscriptionItems(selectedKeys, pickerHierarchy, treeNodes);
+    if (!pickerCustomerId || !pickerEntityId || selectedKeys.size === 0) return;
+    const items = getSubscriptionItemsFromRegistry(selectedKeys, pickerRegistry);
     if (items.length === 0) return;
     setSaveResult(null);
     createMutation.mutate({ customerId: pickerCustomerId, items });
@@ -201,8 +195,10 @@ export default function SubscriptionsPage() {
               <SubscriptionHierarchyPicker
                 governmentEntityId={pickerEntityId}
                 governmentEntityName={`Title ${selectedEntity.titleNumber} - ${selectedEntity.titleName}`}
+                titleName={selectedEntity.titleName}
                 selected={selectedKeys}
                 onSelectionChange={setSelectedKeys}
+                onRegistryChange={setPickerRegistry}
               />
 
               {saveResult && (
