@@ -218,7 +218,7 @@ export default function SimulateRegulationChangesModal({ entity, onClose }: Prop
         <div className="flex items-center justify-end gap-2 px-5 py-3 border-t bg-gray-50">
           <button
             type="button"
-            onClick={onClose}
+            onClick={() => onClose()}
             disabled={isSaving}
             className="px-4 py-1.5 text-sm border border-gray-300 rounded hover:bg-gray-100 disabled:opacity-50"
           >

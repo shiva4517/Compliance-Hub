@@ -4,7 +4,8 @@
       "Bash(npx tsc *)",
       "Bash(echo \"EXIT:$?\")",
       "Read(//c/Users/KURUVA SHIVA PRASAD/Desktop/Compliance Hub/Source/server/**)",
-      "Bash(dotnet build *)"
+      "Bash(dotnet build *)",
+      "Bash(npm run *)"
     ]
   }
 }
