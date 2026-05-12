@@ -111,6 +111,8 @@ public class RegulationSyncService(
                 return;
         }
 
+        if (node.Children is null) return;
+
         foreach (var child in node.Children)
             await UpsertHierarchyAsync(entity, child, db, sections, ct, agencyId, categoryId, typeId, subtypeId, currentPath);
     }

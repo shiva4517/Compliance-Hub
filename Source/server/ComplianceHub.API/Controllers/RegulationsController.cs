@@ -20,6 +20,8 @@ using ComplianceHub.Application.Features.Regulations.Queries.GetCategories;
 using ComplianceHub.Application.Features.Regulations.Queries.GetRegulationHierarchy;
 using ComplianceHub.Application.Features.Regulations.Queries.GetSectionContent;
 using ComplianceHub.Application.Features.Regulations.Queries.GetSections;
+using ComplianceHub.Application.Features.Regulations.Queries.GetSimulatedChanges;
+using ComplianceHub.Application.Features.Regulations.Commands.ApplySimulatedRegulationChange;
 using ComplianceHub.Application.Features.Regulations.Queries.GetSubtypes;
 using ComplianceHub.Application.Features.Regulations.Queries.GetTypes;
 using MediatR;
@@ -326,6 +328,46 @@ public class RegulationsController(IMediator mediator, IRegulationSyncOrchestrat
             error = job.Error,
             summary = job.Summary
         });
+    }
+
+    // ── Super-Admin: Simulate Regulation Changes ──────────────────────────
+
+    [HttpGet("{governmentEntityId:guid}/simulate/changes")]
+    [Authorize(Policy = "SuperAdmin")]
+    public async Task<ActionResult<ApiResponse<SimulatedChangesResultDto>>> GetSimulatedChanges(
+        Guid governmentEntityId, [FromQuery] DateOnly issueDate, CancellationToken ct)
+    {
+        try
+        {
+            var result = await mediator.Send(new GetSimulatedChangesQuery(governmentEntityId, issueDate), ct);
+            return Ok(ApiResponse<SimulatedChangesResultDto>.Ok(result));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return NotFound(ApiResponse<SimulatedChangesResultDto>.Fail(ex.Message));
+        }
+    }
+
+    public record ApplySimulatedRegulationChangeRequest(
+        Guid RegulationId,
+        string HtmlContent,
+        DateOnly SimulatedDate);
+
+    [HttpPost("simulate/apply")]
+    [Authorize(Policy = "SuperAdmin")]
+    public async Task<ActionResult<ApiResponse<ApplySimulatedRegulationChangeResult>>> ApplySimulatedChange(
+        [FromBody] ApplySimulatedRegulationChangeRequest body, CancellationToken ct)
+    {
+        try
+        {
+            var result = await mediator.Send(new ApplySimulatedRegulationChangeCommand(
+                body.RegulationId, body.HtmlContent, body.SimulatedDate), ct);
+            return Ok(ApiResponse<ApplySimulatedRegulationChangeResult>.Ok(result, "Simulated change applied."));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResponse<ApplySimulatedRegulationChangeResult>.Fail(ex.Message));
+        }
     }
 
     [HttpPost("sync-all")]

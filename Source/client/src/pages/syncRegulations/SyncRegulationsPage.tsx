@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { DatabaseZap, RefreshCw, TriangleAlert } from 'lucide-react';
+import { DatabaseZap, FlaskConical, RefreshCw, TriangleAlert } from 'lucide-react';
 import { regulationService } from '../../services/regulationService';
 import { api } from '../../services/api';
+import { useAuth } from '../../contexts/AuthContext';
 import type { GovernmentEntity } from '../../types';
+import SimulateRegulationChangesModal from './SimulateRegulationChangesModal';
 
 interface SyncSummary {
   sectionsAdded: number;
@@ -16,8 +18,12 @@ interface SyncSummary {
 
 export default function SyncRegulationsPage() {
   const qc = useQueryClient();
+  const { user } = useAuth();
+  const isSuperAdmin = user?.role === 'SuperAdmin';
   const [selectedId, setSelectedId] = useState<string>('');
   const [seeded, setSeeded] = useState(false);
+  const [showSimulateModal, setShowSimulateModal] = useState(false);
+  const [simulateToast, setSimulateToast] = useState<string | null>(null);
 
   interface LogEntry {
     message: string;
@@ -205,7 +211,18 @@ export default function SyncRegulationsPage() {
           </div>
         )}
 
-        <div className="flex justify-end">
+        <div className="flex justify-end gap-2">
+          {isSuperAdmin && (
+            <button
+              disabled={!selectedId || isStreaming}
+              onClick={() => setShowSimulateModal(true)}
+              className="flex items-center gap-2 px-4 py-2 text-sm border border-purple-300 text-purple-700 bg-purple-50 rounded-md hover:bg-purple-100 disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Simulate a regulation change for testing"
+            >
+              <FlaskConical size={14} />
+              Simulate Regulation Changes
+            </button>
+          )}
           <button
             disabled={!selectedId || isStreaming}
             onClick={handleSync}
@@ -298,6 +315,26 @@ export default function SyncRegulationsPage() {
           </div>
         )}
       </div>
+
+      {simulateToast && (
+        <div className="fixed right-6 top-6 z-[90] min-w-[320px] max-w-[440px] rounded-xl border border-green-200 bg-white px-4 py-3 shadow-lg">
+          <p className="text-sm font-semibold text-green-700">{simulateToast}</p>
+        </div>
+      )}
+
+      {showSimulateModal && selected && (
+        <SimulateRegulationChangesModal
+          entity={selected}
+          onClose={(successMessage) => {
+            setShowSimulateModal(false);
+            if (successMessage) {
+              setSimulateToast(successMessage);
+              // Auto-dismiss the toast after 4 seconds
+              setTimeout(() => setSimulateToast(null), 4000);
+            }
+          }}
+        />
+      )}
     </div>
   );
 }

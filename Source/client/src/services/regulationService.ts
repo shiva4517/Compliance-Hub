@@ -120,4 +120,46 @@ export const regulationService = {
     const response = await api.get<ApiResponse<string | null>>(`/regulations/sections/${sectionId}/content`);
     return response.data.data ?? null;
   },
+
+  getSimulatedChanges: async (governmentEntityId: string, issueDate: string): Promise<SimulatedChangesResult> => {
+    const response = await api.get<ApiResponse<SimulatedChangesResult>>(
+      `/regulations/${governmentEntityId}/simulate/changes`, { params: { issueDate } });
+    return response.data.data!;
+  },
+
+  applySimulatedChange: async (payload: ApplySimulatedChangeRequest): Promise<ApplySimulatedChangeResult> => {
+    const response = await api.post<ApiResponse<ApplySimulatedChangeResult>>(
+      `/regulations/simulate/apply`, payload);
+    return response.data.data!;
+  },
 };
+
+export interface SimulatedChangeItem {
+  regulationId: string;
+  sectionNumber: string;
+  sectionName: string;
+  amendmentDate: string | null;
+  issueDate: string | null;
+  currentVersion: number;
+  currentContentHash: string;
+  currentLastAmendedDate: string | null;
+  currentHtmlContent: string;
+}
+
+export interface SimulatedChangesResult {
+  titleNumber: number;
+  totalChanged: number;
+  matchedInLocal: number;
+  items: SimulatedChangeItem[];
+}
+
+export interface ApplySimulatedChangeRequest {
+  regulationId: string;
+  htmlContent: string;
+  simulatedDate: string;
+}
+
+export interface ApplySimulatedChangeResult {
+  regulationId: string;
+  newVersion: number;
+}

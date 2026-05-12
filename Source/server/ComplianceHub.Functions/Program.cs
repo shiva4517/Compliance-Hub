@@ -10,6 +10,10 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Npgsql;
 
+// Dapper needs explicit handlers for DateOnly/DateOnly?; register once at startup
+// so every Dapper call (sync, outbox, etc.) handles DateOnly params correctly.
+ComplianceHub.Functions.Services.DapperConfig.RegisterTypeHandlers();
+
 var host = new HostBuilder()
     .ConfigureFunctionsWorkerDefaults()
     .ConfigureServices((ctx, services) =>

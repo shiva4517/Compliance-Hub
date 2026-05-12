@@ -14,6 +14,7 @@ public class DatabaseSeeder(ComplianceHubDbContext context, ILogger<DatabaseSeed
         try
         {
             await context.Database.MigrateAsync();
+            await EnsureNotificationSentHistoryTableAsync();
             await SeedGroupsAsync();
             var company = await SeedDefaultCompanyAsync();
             await SeedUsersAsync(company);
@@ -26,6 +27,32 @@ public class DatabaseSeeder(ComplianceHubDbContext context, ILogger<DatabaseSeed
             logger.LogError(ex, "An error occurred while seeding the database.");
             throw;
         }
+    }
+
+    // Some environments have the AddNotificationSentHistory migration recorded
+    // in __EFMigrationsHistory but the table missing from Postgres. Guarantee
+    // it exists at startup with a single idempotent CREATE TABLE so the
+    // notification pipeline can always insert attempt rows.
+    private async Task EnsureNotificationSentHistoryTableAsync()
+    {
+        const string sql = """
+            CREATE TABLE IF NOT EXISTS "NotificationSentHistory" (
+                "Id"                    uuid                        NOT NULL,
+                "NotificationHistoryId" uuid                        NOT NULL,
+                "AttemptNumber"         integer                     NOT NULL,
+                "IsSuccess"             boolean                     NOT NULL,
+                "Status"                character varying(20)       NOT NULL,
+                "FailureReason"         text                        NULL,
+                "AttemptedAt"           timestamp with time zone    NOT NULL,
+                CONSTRAINT "PK_NotificationSentHistory" PRIMARY KEY ("Id")
+            );
+
+            CREATE INDEX IF NOT EXISTS "IX_NotificationSentHistory_NotificationHistoryId"
+                ON "NotificationSentHistory" ("NotificationHistoryId");
+            """;
+
+        await context.Database.ExecuteSqlRawAsync(sql);
+        logger.LogInformation("Ensured NotificationSentHistory table exists.");
     }
 
     private async Task SeedDueDateTypes()
