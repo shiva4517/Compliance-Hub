@@ -36,7 +36,7 @@ public class GetNotificationsQueryHandler(IUnitOfWork uow)
     {
         var query = uow.NotificationHistory.Query()
             .Include(n => n.Customer)
-            .Where(n => n.CompanyId == request.CompanyId)
+            .Where(n => n.CompanyId == request.CompanyId && n.Status.ToLower() != "simulated")
             .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(request.Search))
