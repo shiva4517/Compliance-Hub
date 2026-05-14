@@ -1,5 +1,5 @@
 # Build Pipeline: ComplianceHub React Client
-# Builds three separate artifacts — one per environment — each with its own API URL baked in.
+# Builds a single artifact for Production with the Prod API URL baked in.
 trigger:
   branches:
     include:
@@ -12,88 +12,6 @@ variables:
   - template: templates/variables.yml
 
 jobs:
-  - job: Build_Dev
-    displayName: Build (Dev)
-    pool:
-      vmImage: ubuntu-latest
-    steps:
-      - task: NodeTool@0
-        displayName: Use Node $(nodeVersion)
-        inputs:
-          versionSpec: $(nodeVersion)
-
-      - task: Cache@2
-        displayName: Cache node_modules
-        inputs:
-          key: 'npm | "$(Agent.OS)" | $(clientDir)/package-lock.json'
-          restoreKeys: |
-            npm | "$(Agent.OS)"
-          path: $(clientDir)/node_modules
-
-      - script: npm ci
-        displayName: npm ci
-        workingDirectory: $(clientDir)
-
-      - script: npm run build
-        displayName: Vite build (Dev)
-        workingDirectory: $(clientDir)
-        env:
-          VITE_API_BASE_URL: $(apiBaseUrlDev)
-
-      - task: ArchiveFiles@2
-        displayName: Archive dist/
-        inputs:
-          rootFolderOrFile: $(buildOutput)
-          includeRootFolder: false
-          archiveType: zip
-          archiveFile: $(Build.ArtifactStagingDirectory)/react-client-dev.zip
-          replaceExistingArchive: true
-
-      - publish: $(Build.ArtifactStagingDirectory)/react-client-dev.zip
-        artifact: react-client-dev
-        displayName: Publish dev artifact
-
-  - job: Build_QA
-    displayName: Build (QA)
-    pool:
-      vmImage: ubuntu-latest
-    steps:
-      - task: NodeTool@0
-        displayName: Use Node $(nodeVersion)
-        inputs:
-          versionSpec: $(nodeVersion)
-
-      - task: Cache@2
-        displayName: Cache node_modules
-        inputs:
-          key: 'npm | "$(Agent.OS)" | $(clientDir)/package-lock.json'
-          restoreKeys: |
-            npm | "$(Agent.OS)"
-          path: $(clientDir)/node_modules
-
-      - script: npm ci
-        displayName: npm ci
-        workingDirectory: $(clientDir)
-
-      - script: npm run build
-        displayName: Vite build (QA)
-        workingDirectory: $(clientDir)
-        env:
-          VITE_API_BASE_URL: $(apiBaseUrlQA)
-
-      - task: ArchiveFiles@2
-        displayName: Archive dist/
-        inputs:
-          rootFolderOrFile: $(buildOutput)
-          includeRootFolder: false
-          archiveType: zip
-          archiveFile: $(Build.ArtifactStagingDirectory)/react-client-qa.zip
-          replaceExistingArchive: true
-
-      - publish: $(Build.ArtifactStagingDirectory)/react-client-qa.zip
-        artifact: react-client-qa
-        displayName: Publish QA artifact
-
   - job: Build_Prod
     displayName: Build (Prod)
     pool:

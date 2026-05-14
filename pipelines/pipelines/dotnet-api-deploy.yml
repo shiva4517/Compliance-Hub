@@ -1,5 +1,6 @@
 # Deploy Pipeline: ComplianceHub .NET 10 Web API
 # Triggered automatically when dotnet-api-build.yml completes successfully.
+# Deploys directly to the Production App Service (no slots, no swap).
 trigger: none
 
 resources:
@@ -15,107 +16,11 @@ variables:
   - template: templates/variables.yml
 
 stages:
-  - stage: Deploy_Dev
-    displayName: Deploy to Dev Slot
-    jobs:
-      - deployment: Deploy
-        displayName: Deploy API to dev slot
-        pool:
-          vmImage: windows-latest
-        environment: dev
-        strategy:
-          runOnce:
-            deploy:
-              steps:
-                - download: dotnet-api-build
-                  artifact: dotnet-api
-
-                - task: AzureAppServiceSettings@1
-                  displayName: Apply App Settings (dev)
-                  inputs:
-                    azureSubscription: $(azureSubscription)
-                    appName: $(apiAppServiceName)
-                    resourceGroupName: $(resourceGroup)
-                    slotName: $(deploySlot)
-                    appSettings: |
-                      [
-                        { "name": "ASPNETCORE_ENVIRONMENT",                  "value": "Development",                                                            "slotSetting": true },
-                        { "name": "ConnectionStrings__DefaultConnection",    "value": "$(ComplianceHub_DB_CONNECTION_DEV)",                                               "slotSetting": true },
-                        { "name": "ConnectionStrings__RegulationsConnection","value": "$(ComplianceHub_REGULATIONS_DB_CONN_DEV)",                                         "slotSetting": true },
-                        { "name": "ALLOWED_ORIGIN_CLIENT_URL",               "value": "https://app-compliance-hub-ui-dev-akgtg2f3djdvdwb5.canadacentral-01.azurewebsites.net",                               "slotSetting": true },
-                        { "name": "WEBSITE_RUN_FROM_PACKAGE",                "value": "1",                                                                      "slotSetting": true },
-                        { "name": "WEBSITE_SWAP_WARMUP_PING_PATH",           "value": "/health",                                                                "slotSetting": true },
-                        { "name": "WEBSITE_SWAP_WARMUP_PING_STATUSES",       "value": "200",                                                                    "slotSetting": true }
-                      ]
-
-                - task: AzureWebApp@1
-                  displayName: Deploy to dev slot
-                  inputs:
-                    azureSubscription: $(azureSubscription)
-                    appType: webApp
-                    appName: $(apiAppServiceName)
-                    resourceGroupName: $(resourceGroup)
-                    deployToSlotOrASE: true
-                    slotName: $(deploySlot)
-                    package: '$(Pipeline.Workspace)/dotnet-api-build/dotnet-api/*.zip'
-                    deploymentMethod: zipDeploy
-
-  # Deploy_QA and Deploy_Prod require manual approval.
-  # Configure approvals in Azure DevOps → Environments → qa / production → Approvals and checks.
-  - stage: Deploy_QA
-    displayName: Deploy to QA Slot
-    dependsOn: Deploy_Dev
-    condition: succeeded()
-    jobs:
-      - deployment: Deploy
-        displayName: Deploy API to QA slot
-        pool:
-          vmImage: windows-latest
-        environment: qa
-        strategy:
-          runOnce:
-            deploy:
-              steps:
-                - download: dotnet-api-build
-                  artifact: dotnet-api
-
-                - task: AzureAppServiceSettings@1
-                  displayName: Apply App Settings (qa)
-                  inputs:
-                    azureSubscription: $(azureSubscription)
-                    appName: $(apiAppServiceName)
-                    resourceGroupName: $(resourceGroup)
-                    slotName: $(qaSlot)
-                    appSettings: |
-                      [
-                        { "name": "ASPNETCORE_ENVIRONMENT",                  "value": "Staging",                                                                "slotSetting": true },
-                        { "name": "ConnectionStrings__DefaultConnection",    "value": "$(ComplianceHub_DB_CONNECTION_QA)",                                                "slotSetting": true },
-                        { "name": "ConnectionStrings__RegulationsConnection","value": "$(ComplianceHub_REGULATIONS_DB_CONN_QA)",                                          "slotSetting": true },
-                        { "name": "ALLOWED_ORIGIN_CLIENT_URL",               "value": "https://app-compliance-hub-ui-qa-fkgfhfgmardrbhh5.canadacentral-01.azurewebsites.net",                                "slotSetting": true },
-                        { "name": "WEBSITE_RUN_FROM_PACKAGE",                "value": "1",                                                                      "slotSetting": true },
-                        { "name": "WEBSITE_SWAP_WARMUP_PING_PATH",           "value": "/health",                                                                "slotSetting": true },
-                        { "name": "WEBSITE_SWAP_WARMUP_PING_STATUSES",       "value": "200",                                                                    "slotSetting": true }
-                      ]
-
-                - task: AzureWebApp@1
-                  displayName: Deploy to QA slot
-                  inputs:
-                    azureSubscription: $(azureSubscription)
-                    appType: webApp
-                    appName: $(apiAppServiceName)
-                    resourceGroupName: $(resourceGroup)
-                    deployToSlotOrASE: true
-                    slotName: $(qaSlot)
-                    package: '$(Pipeline.Workspace)/dotnet-api-build/dotnet-api/*.zip'
-                    deploymentMethod: zipDeploy
-
   - stage: Deploy_Prod
     displayName: Deploy to Production
-    dependsOn: Deploy_QA
-    condition: succeeded()
     jobs:
       - deployment: Deploy
-        displayName: Swap QA slot → production
+        displayName: Deploy API to production
         pool:
           vmImage: windows-latest
         environment: production
@@ -123,13 +28,11 @@ stages:
           runOnce:
             deploy:
               steps:
-                # Apply Production settings to the PRODUCTION slot (not QA).
-                # Sticky settings (slotSetting: true) stay attached to the slot
-                # during a swap, so Prod values must live on the Prod slot
-                # BEFORE the swap — otherwise after swap the Prod slot keeps
-                # QA's sticky values and the app boots with wrong config.
+                - download: dotnet-api-build
+                  artifact: dotnet-api
+
                 - task: AzureAppServiceSettings@1
-                  displayName: Apply App Settings (prod slot)
+                  displayName: Apply App Settings (production)
                   inputs:
                     azureSubscription: $(azureSubscription)
                     appName: $(apiAppServiceName)
@@ -137,21 +40,19 @@ stages:
                     # no slotName → targets the production (default) slot
                     appSettings: |
                       [
-                        { "name": "ASPNETCORE_ENVIRONMENT",                  "value": "Production",                                                             "slotSetting": true },
-                        { "name": "ConnectionStrings__DefaultConnection",    "value": "$(ComplianceHub_DB_CONNECTION_PROD)",                                              "slotSetting": true },
-                        { "name": "ConnectionStrings__RegulationsConnection","value": "$(ComplianceHub_REGULATIONS_DB_CONN_PROD)",                                        "slotSetting": true },
-                        { "name": "ALLOWED_ORIGIN_CLIENT_URL",               "value": "https://app-compliance-hub-ui-g4gmfpfsaeg9fdca.canadacentral-01.azurewebsites.net",                                   "slotSetting": true },
-                        { "name": "WEBSITE_RUN_FROM_PACKAGE",                "value": "1",                                                                      "slotSetting": true },
-                        { "name": "WEBSITE_SWAP_WARMUP_PING_PATH",           "value": "/health",                                                                "slotSetting": true },
-                        { "name": "WEBSITE_SWAP_WARMUP_PING_STATUSES",       "value": "200",                                                                    "slotSetting": true }
+                        { "name": "ASPNETCORE_ENVIRONMENT",                  "value": "Production",                                                                                              "slotSetting": false },
+                        { "name": "ConnectionStrings__DefaultConnection",    "value": "$(ComplianceHub_DB_CONNECTION_PROD)",                                                                     "slotSetting": false },
+                        { "name": "ConnectionStrings__RegulationsConnection","value": "$(ComplianceHub_REGULATIONS_DB_CONN_PROD)",                                                               "slotSetting": false },
+                        { "name": "ALLOWED_ORIGIN_CLIENT_URL",               "value": "https://app-compliance-hub-ui-g4gmfpfsaeg9fdca.canadacentral-01.azurewebsites.net",                        "slotSetting": false },
+                        { "name": "WEBSITE_RUN_FROM_PACKAGE",                "value": "1",                                                                                                       "slotSetting": false }
                       ]
 
-                - task: AzureAppServiceManage@0
-                  displayName: Swap QA slot → production
+                - task: AzureWebApp@1
+                  displayName: Deploy zip to production
                   inputs:
                     azureSubscription: $(azureSubscription)
-                    action: Swap Slots
-                    webAppName: $(apiAppServiceName)
+                    appType: webApp
+                    appName: $(apiAppServiceName)
                     resourceGroupName: $(resourceGroup)
-                    sourceSlot: $(qaSlot)
-                    swapWithProduction: true
+                    package: '$(Pipeline.Workspace)/dotnet-api-build/dotnet-api/*.zip'
+                    deploymentMethod: zipDeploy
