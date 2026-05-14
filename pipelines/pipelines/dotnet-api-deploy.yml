@@ -42,8 +42,10 @@ stages:
                         { "name": "ASPNETCORE_ENVIRONMENT",                  "value": "Development",                                                            "slotSetting": true },
                         { "name": "ConnectionStrings__DefaultConnection",    "value": "$(ComplianceHub_DB_CONNECTION_DEV)",                                               "slotSetting": true },
                         { "name": "ConnectionStrings__RegulationsConnection","value": "$(ComplianceHub_REGULATIONS_DB_CONN_DEV)",                                         "slotSetting": true },
-                        { "name": "ALLOWED_ORIGIN_CLIENT_URL",               "value": "https://app-compliance-hub-ui-dev-akgtg2f3djdvdwb5.canadacentral-01.azurewebsites.net",                               "slotSetting": false },
-                        { "name": "WEBSITE_RUN_FROM_PACKAGE",                "value": "1",                                                                      "slotSetting": false }
+                        { "name": "ALLOWED_ORIGIN_CLIENT_URL",               "value": "https://app-compliance-hub-ui-dev-akgtg2f3djdvdwb5.canadacentral-01.azurewebsites.net",                               "slotSetting": true },
+                        { "name": "WEBSITE_RUN_FROM_PACKAGE",                "value": "1",                                                                      "slotSetting": true },
+                        { "name": "WEBSITE_SWAP_WARMUP_PING_PATH",           "value": "/health",                                                                "slotSetting": true },
+                        { "name": "WEBSITE_SWAP_WARMUP_PING_STATUSES",       "value": "200",                                                                    "slotSetting": true }
                       ]
 
                 - task: AzureWebApp@1
@@ -89,8 +91,10 @@ stages:
                         { "name": "ASPNETCORE_ENVIRONMENT",                  "value": "Staging",                                                                "slotSetting": true },
                         { "name": "ConnectionStrings__DefaultConnection",    "value": "$(ComplianceHub_DB_CONNECTION_QA)",                                                "slotSetting": true },
                         { "name": "ConnectionStrings__RegulationsConnection","value": "$(ComplianceHub_REGULATIONS_DB_CONN_QA)",                                          "slotSetting": true },
-                        { "name": "ALLOWED_ORIGIN_CLIENT_URL",               "value": "https://app-compliance-hub-ui-qa-fkgfhfgmardrbhh5.canadacentral-01.azurewebsites.net",                                "slotSetting": false },
-                        { "name": "WEBSITE_RUN_FROM_PACKAGE",                "value": "1",                                                                      "slotSetting": false }
+                        { "name": "ALLOWED_ORIGIN_CLIENT_URL",               "value": "https://app-compliance-hub-ui-qa-fkgfhfgmardrbhh5.canadacentral-01.azurewebsites.net",                                "slotSetting": true },
+                        { "name": "WEBSITE_RUN_FROM_PACKAGE",                "value": "1",                                                                      "slotSetting": true },
+                        { "name": "WEBSITE_SWAP_WARMUP_PING_PATH",           "value": "/health",                                                                "slotSetting": true },
+                        { "name": "WEBSITE_SWAP_WARMUP_PING_STATUSES",       "value": "200",                                                                    "slotSetting": true }
                       ]
 
                 - task: AzureWebApp@1
@@ -119,20 +123,27 @@ stages:
           runOnce:
             deploy:
               steps:
+                # Apply Production settings to the PRODUCTION slot (not QA).
+                # Sticky settings (slotSetting: true) stay attached to the slot
+                # during a swap, so Prod values must live on the Prod slot
+                # BEFORE the swap — otherwise after swap the Prod slot keeps
+                # QA's sticky values and the app boots with wrong config.
                 - task: AzureAppServiceSettings@1
-                  displayName: Apply App Settings (prod)
+                  displayName: Apply App Settings (prod slot)
                   inputs:
                     azureSubscription: $(azureSubscription)
                     appName: $(apiAppServiceName)
                     resourceGroupName: $(resourceGroup)
-                    slotName: $(qaSlot)
+                    # no slotName → targets the production (default) slot
                     appSettings: |
                       [
                         { "name": "ASPNETCORE_ENVIRONMENT",                  "value": "Production",                                                             "slotSetting": true },
                         { "name": "ConnectionStrings__DefaultConnection",    "value": "$(ComplianceHub_DB_CONNECTION_PROD)",                                              "slotSetting": true },
                         { "name": "ConnectionStrings__RegulationsConnection","value": "$(ComplianceHub_REGULATIONS_DB_CONN_PROD)",                                        "slotSetting": true },
-                        { "name": "ALLOWED_ORIGIN_CLIENT_URL",               "value": "https://app-compliance-hub-ui-g4gmfpfsaeg9fdca.canadacentral-01.azurewebsites.net",                                   "slotSetting": false },
-                        { "name": "WEBSITE_RUN_FROM_PACKAGE",                "value": "1",                                                                      "slotSetting": false }
+                        { "name": "ALLOWED_ORIGIN_CLIENT_URL",               "value": "https://app-compliance-hub-ui-g4gmfpfsaeg9fdca.canadacentral-01.azurewebsites.net",                                   "slotSetting": true },
+                        { "name": "WEBSITE_RUN_FROM_PACKAGE",                "value": "1",                                                                      "slotSetting": true },
+                        { "name": "WEBSITE_SWAP_WARMUP_PING_PATH",           "value": "/health",                                                                "slotSetting": true },
+                        { "name": "WEBSITE_SWAP_WARMUP_PING_STATUSES",       "value": "200",                                                                    "slotSetting": true }
                       ]
 
                 - task: AzureAppServiceManage@0
