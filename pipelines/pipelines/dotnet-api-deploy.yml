@@ -42,7 +42,7 @@ stages:
                         { "name": "ASPNETCORE_ENVIRONMENT",                  "value": "Development",                                                            "slotSetting": true },
                         { "name": "ConnectionStrings__DefaultConnection",    "value": "$(ComplianceHub_DB_CONNECTION_DEV)",                                               "slotSetting": true },
                         { "name": "ConnectionStrings__RegulationsConnection","value": "$(ComplianceHub_REGULATIONS_DB_CONN_DEV)",                                         "slotSetting": true },
-                        { "name": "ALLOWED_ORIGIN_CLIENT_URL",               "value": "https://app-compliance-hub-ui-dev-akgtg2f3djdvdwb5.canadacentral-01.azurewebsites.net",                               "slotSetting": true },
+                        { "name": "ALLOWED_ORIGIN_CLIENT_URL",               "value": "https://app-compliance-hub-ui-dev-akgtg2f3djdvdwb5.canadacentral-01.azurewebsites.net",                               "slotSetting": false },
                         { "name": "WEBSITE_RUN_FROM_PACKAGE",                "value": "1",                                                                      "slotSetting": false }
                       ]
 
@@ -89,7 +89,7 @@ stages:
                         { "name": "ASPNETCORE_ENVIRONMENT",                  "value": "Staging",                                                                "slotSetting": true },
                         { "name": "ConnectionStrings__DefaultConnection",    "value": "$(ComplianceHub_DB_CONNECTION_QA)",                                                "slotSetting": true },
                         { "name": "ConnectionStrings__RegulationsConnection","value": "$(ComplianceHub_REGULATIONS_DB_CONN_QA)",                                          "slotSetting": true },
-                        { "name": "ALLOWED_ORIGIN_CLIENT_URL",               "value": "https://app-compliance-hub-ui-qa-fkgfhfgmardrbhh5.canadacentral-01.azurewebsites.net",                                "slotSetting": true },
+                        { "name": "ALLOWED_ORIGIN_CLIENT_URL",               "value": "https://app-compliance-hub-ui-qa-fkgfhfgmardrbhh5.canadacentral-01.azurewebsites.net",                                "slotSetting": false },
                         { "name": "WEBSITE_RUN_FROM_PACKAGE",                "value": "1",                                                                      "slotSetting": false }
                       ]
 
@@ -131,7 +131,7 @@ stages:
                         { "name": "ASPNETCORE_ENVIRONMENT",                  "value": "Production",                                                             "slotSetting": true },
                         { "name": "ConnectionStrings__DefaultConnection",    "value": "$(ComplianceHub_DB_CONNECTION_PROD)",                                              "slotSetting": true },
                         { "name": "ConnectionStrings__RegulationsConnection","value": "$(ComplianceHub_REGULATIONS_DB_CONN_PROD)",                                        "slotSetting": true },
-                        { "name": "ALLOWED_ORIGIN_CLIENT_URL",               "value": "https://app-compliance-hub-ui-g4gmfpfsaeg9fdca.canadacentral-01.azurewebsites.net",                                   "slotSetting": true },
+                        { "name": "ALLOWED_ORIGIN_CLIENT_URL",               "value": "https://app-compliance-hub-ui-g4gmfpfsaeg9fdca.canadacentral-01.azurewebsites.net",                                   "slotSetting": false },
                         { "name": "WEBSITE_RUN_FROM_PACKAGE",                "value": "1",                                                                      "slotSetting": false }
                       ]
 
