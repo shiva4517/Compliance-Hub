@@ -147,7 +147,9 @@ if (!app.Environment.IsDevelopment())
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
-app.MapHealthChecks("/health", new HealthCheckOptions
+// /health is served by HealthController (liveness only — no DB).
+// /health/ready is the deep readiness probe (DB + migrations).
+app.MapHealthChecks("/health/ready", new HealthCheckOptions
 {
     ResponseWriter = HealthChecks.UI.Client.UIResponseWriter.WriteHealthCheckUIResponse
 });
