@@ -9,11 +9,15 @@ public static class AverageCalculator
 {
     /// <summary>
     /// Returns the average of a total over a count of items.
-    /// BUG: no guard for <paramref name="count"/> == 0, so this throws
-    /// DivideByZeroException at runtime for an empty set.
+    /// Throws <see cref="ArgumentOutOfRangeException"/> if <paramref name="count"/> is zero.
     /// </summary>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="count"/> is 0.</exception>
     public static int ComputeAverage(int total, int count)
     {
+        if (count == 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(count), "Count cannot be zero when computing an average.");
+        }
         return total / count;
     }
 }
