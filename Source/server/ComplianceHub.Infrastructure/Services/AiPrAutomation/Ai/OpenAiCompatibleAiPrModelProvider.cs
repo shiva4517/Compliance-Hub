@@ -64,14 +64,9 @@ internal abstract class OpenAiCompatibleAiPrModelProvider(
     {
         var repositorySnapshot = BuildRepositorySnapshot(repositoryPath);
         var prompt = $"""
-        You are the AI coding agent. Generate a unified git diff patch that implements the requested task.
+        You are the AI coding agent. Implement the requested task by rewriting whole files.
 
-        Rules:
-        - Return only a unified diff that can be applied with git apply.
-        - Use standard "diff --git" headers with a/ and b/ prefixes and correct hunk counts.
-        - Do not wrap the diff in prose unless no safe change can be produced.
-        - Keep the patch minimal and focused.
-        - Do not modify secrets, build outputs, bin/obj, node_modules, or .git files.
+        {FileBlockProtocol}
 
         Task title: {request.TaskTitle}
         Task description:
@@ -85,20 +80,13 @@ internal abstract class OpenAiCompatibleAiPrModelProvider(
         """;
 
         var response = await SendPromptAsync(prompt, ct);
-        var patch = ExtractPatch(response);
-        if (string.IsNullOrWhiteSpace(patch))
+        var (changedFiles, hadBlocks) = await ApplyFileBlocksAsync(repositoryPath, response, ct);
+        if (!hadBlocks)
         {
-            return new CodeGenerationResult($"{ProviderName} did not return an applicable patch.", Array.Empty<string>(), HasChanges: false);
+            return new CodeGenerationResult($"{ProviderName} did not return any file changes.", Array.Empty<string>(), HasChanges: false);
         }
 
-        var applied = await ApplyPatchAsync(repositoryPath, patch, ct);
-        if (!applied.Succeeded)
-        {
-            return new CodeGenerationResult($"{ProviderName} returned a patch, but git apply failed: {applied.ErrorOutput}{applied.Output}", Array.Empty<string>(), HasChanges: false);
-        }
-
-        var changedFiles = await GetChangedFilesAsync(repositoryPath, ct);
-        return new CodeGenerationResult($"{ProviderName} generated and applied code changes.", changedFiles, changedFiles.Count > 0);
+        return new CodeGenerationResult($"{ProviderName} generated and wrote code changes.", changedFiles, changedFiles.Count > 0);
     }
 
     public async Task<PullRequestReviewResult> ReviewPullRequestAsync(StartAiPrAutomationRequest request, IReadOnlyList<ChangedFile> changedFiles, string diff, CancellationToken ct)
@@ -138,14 +126,9 @@ internal abstract class OpenAiCompatibleAiPrModelProvider(
         var repositorySnapshot = BuildRepositorySnapshot(repositoryPath);
         var currentDiff = await GetCurrentDiffAsync(repositoryPath, ct);
         var prompt = $"""
-        You are the AI fix agent. Generate a unified git diff patch that resolves these PR review comments.
+        You are the AI fix agent. Resolve these PR review comments by rewriting whole files.
 
-        Rules:
-        - Return only a unified diff that can be applied with git apply.
-        - Use standard "diff --git" headers with a/ and b/ prefixes and correct hunk counts.
-        - Keep the patch minimal and focused on the review comments.
-        - Do not modify secrets, build outputs, bin/obj, node_modules, or .git files.
-        - If no safe code change can be produced, return NO_PATCH and explain briefly.
+        {FileBlockProtocol}
 
         Original task:
         {request.TaskDescription}
@@ -153,7 +136,7 @@ internal abstract class OpenAiCompatibleAiPrModelProvider(
         Review comments:
         {string.Join(Environment.NewLine, comments.Select(c => $"- {c.FilePath}:{c.Line} {c.Body}"))}
 
-        Current diff:
+        Current uncommitted diff:
         {Truncate(currentDiff, 40000)}
 
         Repository snapshot:
@@ -161,20 +144,13 @@ internal abstract class OpenAiCompatibleAiPrModelProvider(
         """;
 
         var response = await SendPromptAsync(prompt, ct);
-        var patch = ExtractPatch(response);
-        if (string.IsNullOrWhiteSpace(patch))
+        var (changedFiles, hadBlocks) = await ApplyFileBlocksAsync(repositoryPath, response, ct);
+        if (!hadBlocks)
         {
-            return new ReviewFixResult($"{ProviderName} did not return an applicable fix patch.", Array.Empty<string>(), HasChanges: false);
+            return new ReviewFixResult($"{ProviderName} did not return any file changes for the review comments.", Array.Empty<string>(), HasChanges: false);
         }
 
-        var applied = await ApplyPatchAsync(repositoryPath, patch, ct);
-        if (!applied.Succeeded)
-        {
-            return new ReviewFixResult($"{ProviderName} returned a fix patch, but git apply failed: {applied.ErrorOutput}{applied.Output}", Array.Empty<string>(), HasChanges: false);
-        }
-
-        var changedFiles = await GetChangedFilesAsync(repositoryPath, ct);
-        return new ReviewFixResult($"{ProviderName} applied fixes for review comments.", changedFiles, changedFiles.Count > 0);
+        return new ReviewFixResult($"{ProviderName} wrote fixes for review comments.", changedFiles, changedFiles.Count > 0);
     }
 
     public async Task<string> SummarizeValidationFailureAsync(StartAiPrAutomationRequest request, IReadOnlyList<ValidationResult> validationResults, CancellationToken ct)
@@ -207,40 +183,126 @@ internal abstract class OpenAiCompatibleAiPrModelProvider(
             : PullRequestReviewDecision.ChangesRequested;
     }
 
-    private async Task<ValidationResult> ApplyPatchAsync(string repositoryPath, string patch, CancellationToken ct)
+    /// <summary>
+    /// Output contract given to the model. Full-file replacement is dramatically more
+    /// reliable than unified diffs for non-agentic LLM editing (no fragile context/hunk math).
+    /// </summary>
+    private const string FileBlockProtocol = """
+        OUTPUT FORMAT (strict):
+        - Return ONLY file blocks. No prose, no markdown code fences, no diffs.
+        - For every file you create or modify, emit its COMPLETE new content:
+
+        === FILE: relative/path/from/repo/root.ext ===
+        <the entire file content here>
+        === END FILE ===
+
+        - To delete a file, emit a single line: === DELETE: relative/path.ext ===
+        - Use repo-root-relative paths with forward slashes.
+        - Rewrite the whole file every time (never partial snippets or "...").
+        - Keep changes minimal and focused. Do not touch bin/obj, node_modules,
+          .git, or secret files. If no safe change is possible, output exactly: NO_CHANGES
+        """;
+
+    /// <summary>
+    /// Parses the model's file blocks and writes them to the workspace, then stages
+    /// everything. Returns the changed file list and whether any blocks were found.
+    /// </summary>
+    private async Task<(IReadOnlyList<string> Changed, bool HadBlocks)> ApplyFileBlocksAsync(
+        string repositoryPath, string response, CancellationToken ct)
     {
-        var patchPath = Path.Combine(Path.GetTempPath(), $"aipr-{Guid.NewGuid():N}.patch");
-        await File.WriteAllTextAsync(patchPath, patch, ct);
-        try
-        {
-            // LLM-produced diffs frequently have minor context/whitespace/line-count drift.
-            // Try progressively more tolerant apply strategies before giving up.
-            var attempts = new[]
-            {
-                $"git apply --whitespace=fix \"{patchPath}\"",
-                $"git apply --whitespace=fix --recount \"{patchPath}\"",
-                $"git apply --3way \"{patchPath}\"",
-            };
+        var rootFull = Path.GetFullPath(repositoryPath);
+        var excluded = new[] { ".git", "bin", "obj", "node_modules" };
+        var lines = (response ?? string.Empty).Replace("\r\n", "\n").Replace('\r', '\n').Split('\n');
 
-            ValidationResult last = null!;
-            foreach (var command in attempts)
+        var any = false;
+        string? currentPath = null;
+        var buffer = new List<string>();
+
+        bool IsSafe(string rel)
+        {
+            if (string.IsNullOrWhiteSpace(rel) || rel.Contains("..", StringComparison.Ordinal))
             {
-                last = await commandRunner.RunAsync(repositoryPath, command, ct);
-                if (last.Succeeded)
+                return false;
+            }
+
+            var full = Path.GetFullPath(Path.Combine(repositoryPath, rel));
+            if (!full.StartsWith(rootFull, StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            var segments = rel.Split('/', '\\');
+            return !segments.Any(s => excluded.Contains(s, StringComparer.OrdinalIgnoreCase));
+        }
+
+        async Task FlushAsync()
+        {
+            if (currentPath is null)
+            {
+                return;
+            }
+
+            if (IsSafe(currentPath))
+            {
+                var full = Path.GetFullPath(Path.Combine(repositoryPath, currentPath));
+                Directory.CreateDirectory(Path.GetDirectoryName(full)!);
+                await File.WriteAllTextAsync(full, string.Join("\n", buffer), ct);
+                any = true;
+            }
+
+            currentPath = null;
+            buffer.Clear();
+        }
+
+        foreach (var raw in lines)
+        {
+            var line = raw.TrimEnd();
+
+            if (line.StartsWith("=== FILE:", StringComparison.Ordinal) && line.EndsWith("===", StringComparison.Ordinal))
+            {
+                await FlushAsync();
+                currentPath = line["=== FILE:".Length..^3].Trim();
+                continue;
+            }
+
+            if (line.StartsWith("=== END FILE", StringComparison.Ordinal))
+            {
+                await FlushAsync();
+                continue;
+            }
+
+            if (line.StartsWith("=== DELETE:", StringComparison.Ordinal) && line.EndsWith("===", StringComparison.Ordinal))
+            {
+                var del = line["=== DELETE:".Length..^3].Trim();
+                if (IsSafe(del))
                 {
-                    return last;
+                    var full = Path.GetFullPath(Path.Combine(repositoryPath, del));
+                    if (File.Exists(full))
+                    {
+                        File.Delete(full);
+                        any = true;
+                    }
                 }
+
+                continue;
             }
 
-            return last;
-        }
-        finally
-        {
-            if (File.Exists(patchPath))
+            if (currentPath is not null)
             {
-                File.Delete(patchPath);
+                buffer.Add(raw);
             }
         }
+
+        await FlushAsync();
+
+        if (!any)
+        {
+            return (Array.Empty<string>(), false);
+        }
+
+        await commandRunner.RunAsync(repositoryPath, "git add -A", ct);
+        var changed = await GetChangedFilesAsync(repositoryPath, ct);
+        return (changed, true);
     }
 
     private async Task<IReadOnlyList<string>> GetChangedFilesAsync(string repositoryPath, CancellationToken ct)
@@ -276,39 +338,16 @@ internal abstract class OpenAiCompatibleAiPrModelProvider(
         var excluded = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ".git", "bin", "obj", "node_modules", "dist", "build" };
         var files = root.EnumerateFiles("*", SearchOption.AllDirectories)
             .Where(file => !file.FullName.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar).Any(excluded.Contains))
-            .Where(file => file.Length <= 80_000)
-            .Take(80)
+            .Where(file => file.Length <= 200_000)
+            .Take(120)
             .Select(file =>
             {
                 var relative = Path.GetRelativePath(repositoryPath, file.FullName);
                 var content = File.ReadAllText(file.FullName);
-                return $"--- {relative} ---\n{Truncate(content, 5000)}";
+                return $"--- {relative} ---\n{Truncate(content, 24000)}";
             });
 
         return string.Join("\n", files);
-    }
-
-    private static string ExtractPatch(string response)
-    {
-        var trimmed = response.Trim();
-        if (trimmed.Contains("NO_PATCH", StringComparison.OrdinalIgnoreCase))
-        {
-            return string.Empty;
-        }
-
-        var fenceStart = trimmed.IndexOf("```", StringComparison.Ordinal);
-        if (fenceStart >= 0)
-        {
-            var contentStart = trimmed.IndexOf('\n', fenceStart);
-            var fenceEnd = contentStart >= 0 ? trimmed.IndexOf("```", contentStart + 1, StringComparison.Ordinal) : -1;
-            if (contentStart >= 0 && fenceEnd > contentStart)
-            {
-                trimmed = trimmed[(contentStart + 1)..fenceEnd].Trim();
-            }
-        }
-
-        var diffStart = trimmed.IndexOf("diff --git", StringComparison.Ordinal);
-        return diffStart >= 0 ? trimmed[diffStart..].Trim() : string.Empty;
     }
 
     private async Task<string> SendPromptAsync(string prompt, CancellationToken ct)
