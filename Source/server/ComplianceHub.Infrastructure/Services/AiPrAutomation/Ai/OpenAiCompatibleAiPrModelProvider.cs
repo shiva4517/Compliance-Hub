@@ -92,8 +92,22 @@ internal abstract class OpenAiCompatibleAiPrModelProvider(
     public async Task<PullRequestReviewResult> ReviewPullRequestAsync(StartAiPrAutomationRequest request, IReadOnlyList<ChangedFile> changedFiles, string diff, CancellationToken ct)
     {
         var prompt = $"""
-        Review this pull request diff for bugs, security issues, performance problems, coding standards,
-        architecture violations, missing validations, and test coverage gaps.
+        Review this pull request diff against the task.
+
+        Decide using ONLY these BLOCKING criteria:
+        - Compile errors or code that cannot build.
+        - Runtime crashes / unhandled exceptions (e.g. null deref, divide-by-zero, index out of range).
+        - Security vulnerabilities or data-loss/corruption risks.
+        - Incorrect logic that fails the task's stated requirement.
+        - Failing or clearly broken tests.
+
+        NON-BLOCKING (mention as optional suggestions, do NOT block on these):
+        - Missing/extra unit tests, additional coverage.
+        - Style, naming, formatting, documentation.
+        - Performance micro-optimizations, precision/type preferences, refactors.
+
+        If there are NO blocking issues, you MUST approve, even if non-blocking
+        suggestions remain. Only request changes when at least one BLOCKING issue exists.
 
         Task:
         {request.TaskDescription}
@@ -104,10 +118,9 @@ internal abstract class OpenAiCompatibleAiPrModelProvider(
         Diff:
         {Truncate(diff, 60000)}
 
-        Write actionable review findings. On the FINAL line output exactly one of:
+        List findings (mark each [BLOCKING] or [suggestion]). On the FINAL line output exactly one of:
         DECISION: APPROVED
         DECISION: CHANGES_REQUESTED
-        Use APPROVED only when there are no blocking findings.
         """;
 
         var content = await SendPromptAsync(prompt, ct);

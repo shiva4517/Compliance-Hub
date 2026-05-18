@@ -79,14 +79,32 @@ internal sealed class AiPrEventOrchestrator(
 
         if (review.Decision == PullRequestReviewDecision.Approved || review.Comments.Count == 0)
         {
-            await provider.ApprovePullRequestAsync(repository, automationEvent.PullRequestNumber, "AI reviewer found no blocking issues. Human merge is still required.", ct);
-            steps.Add("AI reviewer approved the PR.");
+            var resolved = priorReviews.Count > 0
+                ? $"after {priorReviews.Count} automated fix iteration(s)"
+                : "on first review";
+            await provider.AddIssueCommentAsync(
+                repository,
+                automationEvent.PullRequestNumber,
+                $"{AiPrAutomationMarkers.ResolvedNotice}\n✅ All AI review findings resolved {resolved}. The PR meets the requirements. Human merge is still required (automation never merges).",
+                ct);
+
+            // Self-approval is blocked by GitHub when the token user opened the PR;
+            // don't fail the whole run over it — the resolution is already posted.
+            try
+            {
+                await provider.ApprovePullRequestAsync(repository, automationEvent.PullRequestNumber, "AI reviewer found no blocking issues. Human merge is still required.", ct);
+                steps.Add("AI reviewer approved the PR.");
+            }
+            catch (Exception ex)
+            {
+                steps.Add($"Resolution posted; formal approval skipped ({ex.Message}).");
+            }
 
             return new AiPrAutomationEventResult(
                 runId,
                 AiPrRunStatus.Succeeded,
                 automationEvent.Kind,
-                "PR reviewed and approved. Human merge remains required.",
+                "PR reviewed and all findings resolved. Human merge remains required.",
                 steps,
                 reviewComments,
                 validationResults);
@@ -122,9 +140,10 @@ internal sealed class AiPrEventOrchestrator(
 
         // Bot-loop guard: never react to our own terminal "needs a human" notice.
         if (!string.IsNullOrEmpty(automationEvent.CommentBody)
-            && automationEvent.CommentBody.Contains(AiPrAutomationMarkers.HumanInterventionNotice, StringComparison.Ordinal))
+            && (automationEvent.CommentBody.Contains(AiPrAutomationMarkers.HumanInterventionNotice, StringComparison.Ordinal)
+                || automationEvent.CommentBody.Contains(AiPrAutomationMarkers.ResolvedNotice, StringComparison.Ordinal)))
         {
-            steps.Add("Triggering comment is the terminal human-intervention notice. Skipping.");
+            steps.Add("Triggering comment is a terminal notice (resolved / human-needed). Skipping.");
             return new AiPrAutomationEventResult(runId, AiPrRunStatus.Succeeded, automationEvent.Kind, "No action: terminal notice comment.", steps, reviewComments, validationResults);
         }
 

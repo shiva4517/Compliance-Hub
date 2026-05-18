@@ -44,6 +44,7 @@ jobs:
           AiPrAutomation__Mode: Live
           AiPrAutomation__GitProvider: GitHub
           AiPrAutomation__AiProvider: Gemini
+          AiPrAutomation__MaxReviewFixIterations: '6'
           AiPrAutomation__AllowMerge: 'false'
           AiPrAutomation__AllowApproval: 'true'
           AiPrAutomation__WorkspaceRoot: ${{ runner.temp }}/ai-pr-workspaces

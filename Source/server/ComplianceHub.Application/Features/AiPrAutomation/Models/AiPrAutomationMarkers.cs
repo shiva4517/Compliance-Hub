@@ -12,4 +12,7 @@ public static class AiPrAutomationMarkers
 
     /// <summary>Prefix for the terminal "needs a human" notice (never re-triggers the fix agent).</summary>
     public const string HumanInterventionNotice = "<!-- ai-pr-human-needed -->";
+
+    /// <summary>Prefix for the terminal "all findings resolved" notice (never re-triggers the fix agent).</summary>
+    public const string ResolvedNotice = "<!-- ai-pr-resolved -->";
 }
