@@ -12,12 +12,13 @@ public static class AverageCalculator
     /// Handles cases where <paramref name="count"/> is zero by returning 0 to prevent
     /// a DivideByZeroException.
     /// </summary>
-    public static int ComputeAverage(int total, int count)
+    /// <returns>The average as a double, or 0 if count is zero.</returns>
+    public static double ComputeAverage(int total, int count)
     {
         if (count == 0)
         {
-            return 0;
+            return 0.0;
         }
-        return total / count;
+        return (double)total / count;
     }
 }
