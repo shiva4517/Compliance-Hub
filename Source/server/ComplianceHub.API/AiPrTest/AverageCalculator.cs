@@ -11,13 +11,11 @@ public static class AverageCalculator
     /// Computes the average of a total over a count of items.
     /// </summary>
     /// <param name="total">The sum of the items.</param>
-    /// <param name="count">The number of items. Must be non-negative.</param>
+    /// <param name="count">The number of items. Must be non-negative and non-zero.</param>
     /// <returns>The average as a double.</returns>
     /// <exception cref="ArgumentOutOfRangeException">Thrown if <paramref name="count"/> is negative.</exception>
-    /// <remarks>
-    /// Returns 0.0 if <paramref name="count"/> is zero to prevent a DivideByZeroException.
-    /// </remarks>
-    public static double ComputeAverage(long total, int count)
+    /// <exception cref="ArgumentException">Thrown if <paramref name="count"/> is zero.</exception>
+    public static double ComputeAverage(long total, long count)
     {
         if (count < 0)
         {
@@ -26,7 +24,7 @@ public static class AverageCalculator
 
         if (count == 0)
         {
-            return 0.0;
+            throw new ArgumentException("Count cannot be zero, as an average for zero items is undefined.", nameof(count));
         }
 
         return (double)total / count;
