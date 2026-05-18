@@ -63,6 +63,12 @@ internal sealed class GitHubGitProvider(
             return;
         }
 
+        // CI runners have no global git identity; set a local one so the commit succeeds.
+        var name = configuration["AiPrAutomation:GitHub:CommitterName"] ?? "ai-pr-automation[bot]";
+        var email = configuration["AiPrAutomation:GitHub:CommitterEmail"] ?? "ai-pr-automation[bot]@users.noreply.github.com";
+        EnsureCommandSucceeded(await commandRunner.RunAsync(localPath, $"git config user.name \"{EscapeForShell(name)}\"", ct), "configure committer name");
+        EnsureCommandSucceeded(await commandRunner.RunAsync(localPath, $"git config user.email \"{EscapeForShell(email)}\"", ct), "configure committer email");
+
         EnsureCommandSucceeded(await commandRunner.RunAsync(localPath, "git add .", ct), "stage changes");
         EnsureCommandSucceeded(await commandRunner.RunAsync(localPath, $"git commit -m \"{EscapeForShell(message)}\"", ct), "commit changes");
     }
