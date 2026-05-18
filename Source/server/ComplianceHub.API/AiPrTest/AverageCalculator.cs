@@ -17,7 +17,7 @@ public static class AverageCalculator
     /// <remarks>
     /// Returns 0.0 if <paramref name="count"/> is zero to prevent a DivideByZeroException.
     /// </remarks>
-    public static double ComputeAverage(int total, int count)
+    public static double ComputeAverage(long total, int count)
     {
         if (count < 0)
         {
