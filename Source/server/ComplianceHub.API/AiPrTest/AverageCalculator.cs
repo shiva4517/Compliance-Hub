@@ -9,11 +9,15 @@ public static class AverageCalculator
 {
     /// <summary>
     /// Returns the average of a total over a count of items.
-    /// BUG: no guard for <paramref name="count"/> == 0, so this throws
-    /// DivideByZeroException at runtime for an empty set.
+    /// Handles cases where <paramref name="count"/> is zero by returning 0 to prevent
+    /// a DivideByZeroException.
     /// </summary>
     public static int ComputeAverage(int total, int count)
     {
+        if (count == 0)
+        {
+            return 0;
+        }
         return total / count;
     }
 }
