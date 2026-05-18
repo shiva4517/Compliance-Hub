@@ -1,0 +1,53 @@
+name: AI PR Review
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, ready_for_review]
+  pull_request_review_comment:
+    types: [created]
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  actions: read
+
+concurrency:
+  group: ai-pr-review-${{ github.event.pull_request.number || github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  ai-pr-agent:
+    if: ${{ github.event_name != 'issue_comment' || github.event.issue.pull_request }}
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.ref || github.ref }}
+          token: ${{ secrets.AIPR_GITHUB_TOKEN || github.token }}
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.x'
+
+      - name: Restore runner
+        run: dotnet restore Source/server/ComplianceHub.AiPrRunner/ComplianceHub.AiPrRunner.csproj
+
+      - name: Run AI PR agent
+        env:
+          AiPrAutomation__Mode: Live
+          AiPrAutomation__GitProvider: GitHub
+          AiPrAutomation__AiProvider: Gemini
+          AiPrAutomation__AllowMerge: 'false'
+          AiPrAutomation__AllowApproval: 'true'
+          AiPrAutomation__WorkspaceRoot: ${{ runner.temp }}/ai-pr-workspaces
+          AIPR_GEMINI_API_KEY: ${{ secrets.AIPR_GEMINI_API_KEY }}
+          AIPR_GITHUB_TOKEN: ${{ secrets.AIPR_GITHUB_TOKEN || github.token }}
+          AIPR_VALIDATION_COMMANDS: dotnet restore Source/server/ComplianceHub.sln||dotnet build Source/server/ComplianceHub.sln --no-restore||dotnet test Source/server/ComplianceHub.sln --no-build
+        run: dotnet run --project Source/server/ComplianceHub.AiPrRunner/ComplianceHub.AiPrRunner.csproj --no-restore

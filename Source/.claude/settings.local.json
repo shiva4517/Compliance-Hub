@@ -3,7 +3,9 @@
     "allow": [
       "Bash(dotnet build *)",
       "Bash(dotnet list *)",
-      "Bash(dotnet add *)"
+      "Bash(dotnet add *)",
+      "Bash(find \"/c/Users/KURUVA SHIVA PRASAD/Desktop/Chub/.github\" -type f 2>/dev/null)",
+      "Read(//c/Users/KURUVA SHIVA PRASAD/Desktop/Chub/.github/**)"
     ]
   }
 }
