@@ -14,7 +14,7 @@ public static class AverageCalculator
     /// <exception cref="ArgumentOutOfRangeException">
     /// Thrown when <paramref name="count"/> is negative.
     /// </exception>
-    public static double ComputeAverage(int total, int count)
+    public static double ComputeAverage(long total, int count)
     {
         if (count < 0)
             throw new ArgumentOutOfRangeException(nameof(count), "count must be non-negative.");
