@@ -17,3 +17,5 @@ public static class AverageCalculator
         return total / count;
     }
 }
+
+// retrigger: cross-model loop test
