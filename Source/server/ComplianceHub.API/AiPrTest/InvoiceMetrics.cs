@@ -13,6 +13,10 @@ public static class InvoiceMetrics
     /// <returns>The average amount per invoice.</returns>
     public static decimal AverageInvoiceAmount(decimal totalAmount, int invoiceCount)
     {
+        if (invoiceCount == 0)
+        {
+            return 0m;
+        }
         return totalAmount / invoiceCount;
     }
 }
