@@ -11,12 +11,12 @@ public static class AverageCalculator
     /// Returns the average of a total over a count of items.
     /// Returns 0 when <paramref name="count"/> is 0 (empty set).
     /// </summary>
-    public static int ComputeAverage(int total, int count)
+    public static double ComputeAverage(int total, int count)
     {
         if (count == 0)
             return 0;
 
-        return total / count;
+        return (double)total / count;
     }
 }
 
