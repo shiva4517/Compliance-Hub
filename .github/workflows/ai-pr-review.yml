@@ -104,7 +104,9 @@ jobs:
             An automated reviewer left change requests on this pull request.
             Read the most recent PR comment that contains the marker
             "<!-- ai-pr-review -->" and treat its findings as the work to do.
-            Implement the requested code fixes in this repository. Then run
+            Implement fixes for EVERY item in that comment's numbered list
+            (all [BLOCKING] items; address [suggestion] items too when safe) in
+            a single pass - do not fix only some. Then run
             `dotnet build Source/server/ComplianceHub.sln` and fix any build
             errors you introduced. When the build succeeds, commit all changes
             with a clear message and push them to the current PR branch

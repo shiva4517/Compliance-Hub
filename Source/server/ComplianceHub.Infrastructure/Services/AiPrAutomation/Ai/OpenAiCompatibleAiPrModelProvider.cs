@@ -118,7 +118,12 @@ internal abstract class OpenAiCompatibleAiPrModelProvider(
         Diff:
         {Truncate(diff, 60000)}
 
-        List findings (mark each [BLOCKING] or [suggestion]). On the FINAL line output exactly one of:
+        Perform ONE complete, exhaustive review of the ENTIRE diff in this single
+        pass. Find and list EVERY issue now - do NOT hold issues back for a later
+        review. Output a single numbered list covering all findings, each marked
+        [BLOCKING] or [suggestion], each with file/line and a concrete fix. The
+        next reviews must only verify these are resolved, not discover new ones.
+        On the FINAL line output exactly one of:
         DECISION: APPROVED
         DECISION: CHANGES_REQUESTED
         """;
