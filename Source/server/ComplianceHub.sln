@@ -15,6 +15,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ComplianceHub.Functions", "
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ComplianceHub.AiPrRunner", "ComplianceHub.AiPrRunner\ComplianceHub.AiPrRunner.csproj", "{F4968784-7BCF-4D61-94ED-999EF1D5DEC3}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ComplianceHub.API.Tests", "ComplianceHub.API.Tests\ComplianceHub.API.Tests.csproj", "{F3E3AA48-AE77-4388-9BDE-407D5C6EB68F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -97,6 +99,18 @@ Global
 		{F4968784-7BCF-4D61-94ED-999EF1D5DEC3}.Release|x64.Build.0 = Release|Any CPU
 		{F4968784-7BCF-4D61-94ED-999EF1D5DEC3}.Release|x86.ActiveCfg = Release|Any CPU
 		{F4968784-7BCF-4D61-94ED-999EF1D5DEC3}.Release|x86.Build.0 = Release|Any CPU
+		{F3E3AA48-AE77-4388-9BDE-407D5C6EB68F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F3E3AA48-AE77-4388-9BDE-407D5C6EB68F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F3E3AA48-AE77-4388-9BDE-407D5C6EB68F}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{F3E3AA48-AE77-4388-9BDE-407D5C6EB68F}.Debug|x64.Build.0 = Debug|Any CPU
+		{F3E3AA48-AE77-4388-9BDE-407D5C6EB68F}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{F3E3AA48-AE77-4388-9BDE-407D5C6EB68F}.Debug|x86.Build.0 = Debug|Any CPU
+		{F3E3AA48-AE77-4388-9BDE-407D5C6EB68F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F3E3AA48-AE77-4388-9BDE-407D5C6EB68F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F3E3AA48-AE77-4388-9BDE-407D5C6EB68F}.Release|x64.ActiveCfg = Release|Any CPU
+		{F3E3AA48-AE77-4388-9BDE-407D5C6EB68F}.Release|x64.Build.0 = Release|Any CPU
+		{F3E3AA48-AE77-4388-9BDE-407D5C6EB68F}.Release|x86.ActiveCfg = Release|Any CPU
+		{F3E3AA48-AE77-4388-9BDE-407D5C6EB68F}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
