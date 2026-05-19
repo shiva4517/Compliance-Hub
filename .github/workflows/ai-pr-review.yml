@@ -66,6 +66,11 @@ jobs:
       && !contains(github.event.comment.body, '<!-- ai-pr-resolved -->')
       && !contains(github.event.comment.body, '<!-- ai-pr-human-needed -->') }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      id-token: write
 
     steps:
       - name: Checkout repository
@@ -92,6 +97,7 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ secrets.AIPR_GITHUB_TOKEN }}
           claude_args: '--allowedTools Read,Edit,Write,Bash'
           prompt: >-
             An automated reviewer left change requests on this pull request.
