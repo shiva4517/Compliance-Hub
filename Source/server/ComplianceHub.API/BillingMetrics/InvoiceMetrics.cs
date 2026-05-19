@@ -1,4 +1,4 @@
-namespace ComplianceHub.API.AiPrTest;
+namespace ComplianceHub.API.BillingMetrics;
 
 /// <summary>
 /// Computes simple metrics over a set of invoices.

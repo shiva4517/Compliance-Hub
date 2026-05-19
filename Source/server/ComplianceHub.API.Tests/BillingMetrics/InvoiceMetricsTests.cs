@@ -1,7 +1,7 @@
-using ComplianceHub.API.AiPrTest;
+using ComplianceHub.API.BillingMetrics;
 using Xunit;
 
-namespace ComplianceHub.API.Tests.AiPrTest;
+namespace ComplianceHub.API.Tests.BillingMetrics;
 
 public class InvoiceMetricsTests
 {
