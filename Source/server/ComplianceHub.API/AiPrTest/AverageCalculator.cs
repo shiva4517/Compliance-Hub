@@ -14,6 +14,8 @@ public static class AverageCalculator
     /// </summary>
     public static int ComputeAverage(int total, int count)
     {
+        if (count == 0)
+            throw new ArgumentException("Count cannot be zero.", nameof(count));
         return total / count;
     }
 }
